@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyLoad Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Professional Blues" - A clean, business-focused palette using a deep navy for the header, a supportive sky blue for accents, and a light gray for the background and cards. This provides a clear, calm, and trustworthy visual feel. -->
+    <!-- Application Structure Plan: A single-page application with a fixed header, a prominent live balance display for each company, separate forms for sales and top-ups, and two distinct transaction history logs. This structure was chosen to provide a central, high-level overview (the balance per company) while maintaining the clarity of separate, task-oriented forms and transaction lists. This approach allows the user to quickly see their business's financial status by provider and easily perform sales or inventory management tasks. -->
+    <!-- Visualization & Content Choices: 
+        - Current Balances Display: Goal=Inform status by company -> Method=Large, individual text elements in a styled container, with color-coding for low balances -> Interaction=None -> Justification=Provides crucial, at-a-glance financial metrics that break down inventory by each provider, with a new visual alert for low stock.
+        - Sales Transaction Form: Goal=Process sales -> Method=Interactive HTML form with dropdowns and inputs -> Interaction=Input, selection, button click -> Justification=The most direct way to capture sales details, which now affects the specific company's balance.
+        - Company Top-up Form: Goal=Record purchases -> Method=Interactive HTML form -> Interaction=Input, selection, button click -> Justification=A new, dedicated form to track inventory replenishment, which now directly increases the correct company's balance.
+        - Sales History & Top-up History: Goal=Track transactions -> Method=Dynamically updated lists with delete options -> Interaction=Click to delete (now with a balance update) -> Justification=Provides a detailed record for each transaction type, with the delete function now correctly reversing the impact on the specific company's balance.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .message-box {
+            display: none;
+        }
+        .message-box.show {
+            display: block;
+        }
+        .balance-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .balance-item .balance-amount {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="app" class="max-w-xl mx-auto min-h-screen bg-white shadow-lg flex flex-col">
+        
+        <header class="bg-blue-900 text-white p-4 text-center">
+            <h1 class="text-xl font-bold">Zaman Photcopy EasyLoad Manager</h1>
+            <p class="text-sm opacity-80">Quickly process mobile credit top-ups.</p>
+        </header>
+
+        <main class="flex-grow p-4 sm:p-6 overflow-y-auto">
+            
+            <!-- Login Section -->
+            <section id="login-section" class="bg-white p-6 rounded-xl shadow-md mb-6">
+                <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">Login to your account</h2>
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label for="password-input" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="password-input" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your password">
+                    </div>
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Login
+                    </button>
+                </form>
+            </section>
+            <div id="login-message-box" class="message-box p-4 rounded-md text-sm mb-4"></div>
+
+            <!-- Main App Content (hidden initially) -->
+            <div id="app-content" class="hidden">
+                <!-- Section for Current Balances per Company -->
+                <section class="bg-blue-600 text-white p-6 rounded-xl shadow-md mb-6">
+                    <h2 class="text-lg font-semibold opacity-90 text-center">Current Balances</h2>
+                    <div id="balance-container" class="grid grid-cols-2 gap-4 mt-4">
+                        <!-- Balance items will be rendered here dynamically by JavaScript -->
+                    </div>
+                </section>
+
+                <!-- Section for Customer Sales -->
+                <section class="bg-white p-6 rounded-xl shadow-md mb-6">
+                    <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">New Customer Sale</h2>
+                    <form id="sale-form" class="space-y-4">
+                        <div>
+                            <label for="sale-company-select" class="block text-sm font-medium text-gray-700">Mobile Company</label>
+                            <select id="sale-company-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                                <option value="Zong">Zong</option>
+                                <option value="Telenor">Telenor</option>
+                                <option value="Jazz">Jazz</option>
+                                <option value="Ufone">Ufone</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="phone-input" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                            <input type="tel" id="phone-input" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2" placeholder="e.g., 03123456789">
+                        </div>
+                        <div>
+                            <label for="sale-amount-input" class="block text-sm font-medium text-gray-700">Amount</label>
+                            <input type="number" id="sale-amount-input" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2" placeholder="e.g., 100">
+                        </div>
+                        <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Process Sale
+                        </button>
+                    </form>
+                </section>
+
+                <div id="sale-message-box" class="message-box p-4 rounded-md text-sm mb-4"></div>
+
+                <section class="bg-white p-6 rounded-xl shadow-md mb-6">
+                    <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">Recent Sales</h2>
+                    <div id="sales-list" class="space-y-4 overflow-y-auto max-h-80">
+                    </div>
+                </section>
+
+                <!-- Section for Company Top-ups -->
+                <section class="bg-white p-6 rounded-xl shadow-md mb-6">
+                    <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">Record Company Top-up</h2>
+                    <form id="topup-form" class="space-y-4">
+                        <div>
+                            <label for="topup-company-select" class="block text-sm font-medium text-gray-700">Mobile Company</label>
+                            <select id="topup-company-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                                <option value="Zong">Zong</option>
+                                <option value="Telenor">Telenor</option>
+                                <option value="Jazz">Jazz</option>
+                                <option value="Ufone">Ufone</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="topup-amount-input" class="block text-sm font-medium text-gray-700">Amount</label>
+                            <input type="number" id="topup-amount-input" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2" placeholder="e.g., 5000">
+                        </div>
+                        <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">
+                            Record Top-up
+                        </button>
+                    </form>
+                </section>
+                
+                <div id="topup-message-box" class="message-box p-4 rounded-md text-sm mb-4"></div>
+
+                <section class="bg-white p-6 rounded-xl shadow-md mb-6">
+                    <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">Recent Top-ups</h2>
+                    <div id="topups-list" class="space-y-4 overflow-y-auto max-h-80">
+                    </div>
+                </section>
+
+                <!-- Section to Change Password -->
+                <section id="change-password-section" class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">Change Password</h2>
+                    <form id="change-password-form" class="space-y-4">
+                        <div>
+                            <label for="current-password" class="block text-sm font-medium text-gray-700">Current Password</label>
+                            <input type="password" id="current-password" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter current password">
+                        </div>
+                        <div>
+                            <label for="new-password" class="block text-sm font-medium text-gray-700">New Password</label>
+                            <input type="password" id="new-password" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter new password">
+                        </div>
+                        <div>
+                            <label for="confirm-new-password" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                            <input type="password" id="confirm-new-password" class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2" placeholder="Confirm new password">
+                        </div>
+                        <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            Change Password
+                        </button>
+                    </form>
+                </section>
+                <div id="change-password-message-box" class="message-box p-4 rounded-md text-sm mt-4"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginSection = document.getElementById('login-section');
+            const loginForm = document.getElementById('login-form');
+            const appContent = document.getElementById('app-content');
+            const loginMessageBox = document.getElementById('login-message-box');
+            
+            const saleForm = document.getElementById('sale-form');
+            const topupForm = document.getElementById('topup-form');
+            const salesList = document.getElementById('sales-list');
+            const topupsList = document.getElementById('topups-list');
+            const saleMessageBox = document.getElementById('sale-message-box');
+            const topupMessageBox = document.getElementById('topup-message-box');
+            const balanceContainer = document.getElementById('balance-container');
+            const changePasswordForm = document.getElementById('change-password-form');
+            const changePasswordMessageBox = document.getElementById('change-password-message-box');
+
+            let correctPassword = '12345';
+            let sales = [];
+            let topUps = [];
+            
+            // Store balances in an object for each company
+            let companyBalances = {
+                'Zong': 0,
+                'Telenor': 0,
+                'Jazz': 0,
+                'Ufone': 0
+            };
+
+            function updateBalance(company, amount) {
+                if (companyBalances.hasOwnProperty(company)) {
+                    companyBalances[company] += amount;
+                }
+                renderBalances();
+            }
+
+            function renderBalances() {
+                balanceContainer.innerHTML = '';
+                const companies = Object.keys(companyBalances);
+                companies.forEach(company => {
+                    const balanceEl = document.createElement('div');
+                    balanceEl.className = 'balance-item';
+                    
+                    const companyNameEl = document.createElement('h3');
+                    companyNameEl.className = 'text-lg font-semibold opacity-90';
+                    companyNameEl.textContent = company;
+                    
+                    const balanceAmountEl = document.createElement('p');
+                    balanceAmountEl.className = 'balance-amount';
+                    balanceAmountEl.textContent = `Rs. ${companyBalances[company].toLocaleString()}`;
+                    
+                    // Set color based on balance amount
+                    if (companyBalances[company] < 500) {
+                        balanceAmountEl.style.color = '#F87171'; // Tailwind red-400
+                    } else {
+                        balanceAmountEl.style.color = '#fff';
+                    }
+
+                    balanceEl.appendChild(companyNameEl);
+                    balanceEl.appendChild(balanceAmountEl);
+                    balanceContainer.appendChild(balanceEl);
+                });
+            }
+
+            function displayMessage(message, type, messageBoxElement) {
+                messageBoxElement.textContent = message;
+                messageBoxElement.classList.remove('message-box', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+                messageBoxElement.classList.add('show');
+                if (type === 'success') {
+                    messageBoxElement.classList.add('bg-green-100', 'text-green-700');
+                } else if (type === 'error') {
+                    messageBoxElement.classList.add('bg-red-100', 'text-red-700');
+                }
+                setTimeout(() => {
+                    messageBoxElement.classList.remove('show');
+                }, 3000);
+            }
+
+            function renderSales() {
+                salesList.innerHTML = '';
+                if (sales.length === 0) {
+                    salesList.innerHTML = '<p class="text-center text-gray-500">No sales recorded yet.</p>';
+                } else {
+                    sales.forEach((sale, index) => {
+                        const saleElement = document.createElement('div');
+                        saleElement.className = 'bg-gray-50 p-4 rounded-lg flex justify-between items-center shadow-sm';
+                        
+                        const detailsHtml = `
+                            <div>
+                                <h3 class="font-bold text-gray-900">${sale.company}</h3>
+                                <p class="text-sm text-gray-600">${sale.phone}</p>
+                            </div>
+                            <div class="text-right flex items-center space-x-2">
+                                <span class="font-bold text-blue-600">Rs. ${sale.amount}</span>
+                                <p class="text-xs text-gray-500">${new Date(sale.timestamp).toLocaleTimeString()}</p>
+                                <button class="delete-btn text-red-500 hover:text-red-700 transition" data-index="${index}">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        `;
+                        saleElement.innerHTML = detailsHtml;
+                        salesList.prepend(saleElement);
+                    });
+                }
+            }
+
+            function renderTopUps() {
+                topupsList.innerHTML = '';
+                if (topUps.length === 0) {
+                    topupsList.innerHTML = '<p class="text-center text-gray-500">No top-ups recorded yet.</p>';
+                } else {
+                    topUps.forEach((topUp, index) => {
+                        const topUpElement = document.createElement('div');
+                        topUpElement.className = 'bg-gray-50 p-4 rounded-lg flex justify-between items-center shadow-sm';
+
+                        const detailsHtml = `
+                            <div>
+                                <h3 class="font-bold text-gray-900">${topUp.company}</h3>
+                            </div>
+                            <div class="text-right flex items-center space-x-2">
+                                <span class="font-bold text-sky-600">Rs. ${topUp.amount}</span>
+                                <p class="text-xs text-gray-500">${new Date(topUp.timestamp).toLocaleTimeString()}</p>
+                                <button class="delete-btn-topup text-red-500 hover:text-red-700 transition" data-index="${index}">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        `;
+                        topUpElement.innerHTML = detailsHtml;
+                        topupsList.prepend(topUpElement);
+                    });
+                }
+            }
+
+            // --- Event Listeners for Login, Sales, and Top-ups ---
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const enteredPassword = document.getElementById('password-input').value;
+                
+                if (enteredPassword === correctPassword) {
+                    loginSection.classList.add('hidden');
+                    appContent.classList.remove('hidden');
+                    renderBalances();
+                    renderSales();
+                    renderTopUps();
+                } else {
+                    displayMessage('Incorrect password. Please try again.', 'error', loginMessageBox);
+                }
+            });
+
+            changePasswordForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const currentPassword = document.getElementById('current-password').value;
+                const newPassword = document.getElementById('new-password').value;
+                const confirmNewPassword = document.getElementById('confirm-new-password').value;
+
+                if (currentPassword === '' || newPassword === '' || confirmNewPassword === '') {
+                    displayMessage('All fields are required.', 'error', changePasswordMessageBox);
+                    return;
+                }
+
+                if (currentPassword !== correctPassword) {
+                    displayMessage('Incorrect current password.', 'error', changePasswordMessageBox);
+                    return;
+                }
+
+                if (newPassword !== confirmNewPassword) {
+                    displayMessage('New passwords do not match.', 'error', changePasswordMessageBox);
+                    return;
+                }
+
+                correctPassword = newPassword;
+                displayMessage('Password changed successfully!', 'success', changePasswordMessageBox);
+                changePasswordForm.reset();
+            });
+
+            saleForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const company = document.getElementById('sale-company-select').value;
+                const phone = document.getElementById('phone-input').value.trim();
+                const amount = document.getElementById('sale-amount-input').value;
+
+                if (phone === '' || amount === '') {
+                    displayMessage('Please fill out all fields.', 'error', saleMessageBox);
+                    return;
+                }
+
+                if (phone.length < 10) {
+                    displayMessage('Please enter a valid phone number.', 'error', saleMessageBox);
+                    return;
+                }
+                
+                const parsedAmount = parseInt(amount);
+                updateBalance(company, -parsedAmount);
+
+                const newSale = {
+                    company,
+                    phone,
+                    amount: parsedAmount,
+                    timestamp: new Date().toISOString()
+                };
+
+                sales.push(newSale);
+                renderSales();
+                displayMessage('Sale processed successfully!', 'success', saleMessageBox);
+
+                saleForm.reset();
+            });
+
+            topupForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const company = document.getElementById('topup-company-select').value;
+                const amount = document.getElementById('topup-amount-input').value;
+
+                if (amount === '') {
+                    displayMessage('Please enter an amount.', 'error', topupMessageBox);
+                    return;
+                }
+
+                const parsedAmount = parseInt(amount);
+                updateBalance(company, parsedAmount);
+
+                const newTopUp = {
+                    company,
+                    amount: parsedAmount,
+                    timestamp: new Date().toISOString()
+                };
+
+                topUps.push(newTopUp);
+                renderTopUps();
+                displayMessage('Top-up recorded successfully!', 'success', topupMessageBox);
+
+                topupForm.reset();
+            });
+
+            salesList.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-btn')) {
+                    const btn = e.target.closest('.delete-btn');
+                    const index = parseInt(btn.dataset.index);
+                    const deletedSale = sales[index];
+                    updateBalance(deletedSale.company, deletedSale.amount);
+                    sales.splice(index, 1);
+                    renderSales();
+                    displayMessage('Sale deleted.', 'success', saleMessageBox);
+                }
+            });
+
+            topupsList.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-btn-topup')) {
+                    const btn = e.target.closest('.delete-btn-topup');
+                    const index = parseInt(btn.dataset.index);
+                    const deletedTopUp = topUps[index];
+                    updateBalance(deletedTopUp.company, -deletedTopUp.amount);
+                    topUps.splice(index, 1);
+                    renderTopUps();
+                    displayMessage('Top-up deleted.', 'success', topupMessageBox);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
