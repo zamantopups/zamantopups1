@@ -8,15 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: "Professional Blues" - A clean, business-focused palette using a deep navy for the header, a supportive sky blue for accents, and a light gray for the background and cards. This provides a clear, calm, and trustworthy visual feel. -->
-    <!-- Application Structure Plan: A single-page application with a fixed header, a prominent live balance display for each company, separate forms for sales and top-ups, and two distinct transaction history logs. This structure was chosen to provide a central, high-level overview (the balance per company) while maintaining the clarity of separate, task-oriented forms and transaction lists. This approach allows the user to quickly see their business's financial status by provider and easily perform sales or inventory management tasks. -->
-    <!-- Visualization & Content Choices: 
-        - Current Balances Display: Goal=Inform status by company -> Method=Large, individual text elements in a styled container, with color-coding for low balances -> Interaction=None -> Justification=Provides crucial, at-a-glance financial metrics that break down inventory by each provider, with a new visual alert for low stock.
-        - Sales Transaction Form: Goal=Process sales -> Method=Interactive HTML form with dropdowns and inputs -> Interaction=Input, selection, button click -> Justification=The most direct way to capture sales details, which now affects the specific company's balance.
-        - Company Top-up Form: Goal=Record purchases -> Method=Interactive HTML form -> Interaction=Input, selection, button click -> Justification=A new, dedicated form to track inventory replenishment, which now directly increases the correct company's balance.
-        - Sales History & Top-up History: Goal=Track transactions -> Method=Dynamically updated lists with delete options -> Interaction=Click to delete (now with a balance update) -> Justification=Provides a detailed record for each transaction type, with the delete function now correctly reversing the impact on the specific company's balance.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -51,7 +42,6 @@
 
         <main class="flex-grow p-4 sm:p-6 overflow-y-auto">
             
-            <!-- Login Section -->
             <section id="login-section" class="bg-white p-6 rounded-xl shadow-md mb-6">
                 <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">Login to your account</h2>
                 <form id="login-form" class="space-y-4">
@@ -66,17 +56,13 @@
             </section>
             <div id="login-message-box" class="message-box p-4 rounded-md text-sm mb-4"></div>
 
-            <!-- Main App Content (hidden initially) -->
             <div id="app-content" class="hidden">
-                <!-- Section for Current Balances per Company -->
                 <section class="bg-blue-600 text-white p-6 rounded-xl shadow-md mb-6">
                     <h2 class="text-lg font-semibold opacity-90 text-center">Current Balances</h2>
                     <div id="balance-container" class="grid grid-cols-2 gap-4 mt-4">
-                        <!-- Balance items will be rendered here dynamically by JavaScript -->
-                    </div>
+                        </div>
                 </section>
 
-                <!-- Section for Customer Sales -->
                 <section class="bg-white p-6 rounded-xl shadow-md mb-6">
                     <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">New Customer Sale</h2>
                     <form id="sale-form" class="space-y-4">
@@ -111,7 +97,6 @@
                     </div>
                 </section>
 
-                <!-- Section for Company Top-ups -->
                 <section class="bg-white p-6 rounded-xl shadow-md mb-6">
                     <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">Record Company Top-up</h2>
                     <form id="topup-form" class="space-y-4">
@@ -142,7 +127,6 @@
                     </div>
                 </section>
 
-                <!-- Section to Change Password -->
                 <section id="change-password-section" class="bg-white p-6 rounded-xl shadow-md">
                     <h2 class="text-lg font-semibold mb-4 text-center text-blue-900">Change Password</h2>
                     <form id="change-password-form" class="space-y-4">
@@ -196,12 +180,38 @@
                 'Jazz': 0,
                 'Ufone': 0
             };
+            
+            const DATA_KEY = 'easyLoadAppData';
+
+            // Function to save all app data to local storage
+            function saveData() {
+                const data = {
+                    password: correctPassword,
+                    sales,
+                    topUps,
+                    companyBalances
+                };
+                localStorage.setItem(DATA_KEY, JSON.stringify(data));
+            }
+
+            // Function to load all app data from local storage
+            function loadData() {
+                const data = localStorage.getItem(DATA_KEY);
+                if (data) {
+                    const parsedData = JSON.parse(data);
+                    correctPassword = parsedData.password;
+                    sales = parsedData.sales;
+                    topUps = parsedData.topUps;
+                    companyBalances = parsedData.companyBalances;
+                }
+            }
 
             function updateBalance(company, amount) {
                 if (companyBalances.hasOwnProperty(company)) {
                     companyBalances[company] += amount;
                 }
                 renderBalances();
+                saveData(); // Save data after every balance update
             }
 
             function renderBalances() {
@@ -302,7 +312,6 @@
             }
 
             // --- Event Listeners for Login, Sales, and Top-ups ---
-
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const enteredPassword = document.getElementById('password-input').value;
@@ -313,6 +322,7 @@
                     renderBalances();
                     renderSales();
                     renderTopUps();
+                    saveData(); // Save data on successful login
                 } else {
                     displayMessage('Incorrect password. Please try again.', 'error', loginMessageBox);
                 }
@@ -340,6 +350,7 @@
                 }
 
                 correctPassword = newPassword;
+                saveData(); // Save the new password
                 displayMessage('Password changed successfully!', 'success', changePasswordMessageBox);
                 changePasswordForm.reset();
             });
@@ -374,7 +385,7 @@
                 sales.push(newSale);
                 renderSales();
                 displayMessage('Sale processed successfully!', 'success', saleMessageBox);
-
+                saveData(); // Save data after a sale
                 saleForm.reset();
             });
 
@@ -401,7 +412,7 @@
                 topUps.push(newTopUp);
                 renderTopUps();
                 displayMessage('Top-up recorded successfully!', 'success', topupMessageBox);
-
+                saveData(); // Save data after a top-up
                 topupForm.reset();
             });
 
@@ -414,6 +425,7 @@
                     sales.splice(index, 1);
                     renderSales();
                     displayMessage('Sale deleted.', 'success', saleMessageBox);
+                    saveData(); // Save data after deletion
                 }
             });
 
@@ -426,8 +438,20 @@
                     topUps.splice(index, 1);
                     renderTopUps();
                     displayMessage('Top-up deleted.', 'success', topupMessageBox);
+                    saveData(); // Save data after deletion
                 }
             });
+            
+            // Initial data load when the app starts
+            loadData();
+            if (localStorage.getItem(DATA_KEY)) {
+                // If data exists, show the main content and hide the login form
+                loginSection.classList.add('hidden');
+                appContent.classList.remove('hidden');
+                renderBalances();
+                renderSales();
+                renderTopUps();
+            }
         });
     </script>
 </body>
